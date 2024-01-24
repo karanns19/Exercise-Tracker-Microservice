@@ -1,18 +1,53 @@
-const express = require('express')
+
+const path = require("path")
+const express = require("express")
+const cors = require("cors")
+const bodyParser = require("body-parser")
+const mongoose = require("mongoose")
+const favicon = require('serve-favicon')
+require("dotenv").config({ path: path.resolve(__dirname, ".env"), })
+
+mongoose.Promise = global.Promise
+console.log(process.env.MONGO_URI)
+mongoose.connect(
+    process.env.MONGO_URI,
+    { 
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }
+  )
+  .catch(({ message }) => {
+    console.error(`Unable to connect to the mongodb instance: ${message}`)
+  }
+)
+
+const db = mongoose.connection
+db.on("error", ({ message }) => {
+  console.error(`Mongoose default connection error: ${message}`)
+})
+db.once("open", () => {
+  console.info(`Mongoose default connection opened`)
+})
+
+
 const app = express()
-const cors = require('cors')
-require('dotenv').config()
+app.set("port", process.env.PORT || 3000)
 
+// Serve static files
+app.use(express.static(path.join(__dirname, "public")))
+app.use(favicon(path.resolve(__dirname, 'public', 'images', 'favicon.ico')))
+
+// Body parsing - parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: false, }))
+
+// Body parsing - parse json
+app.use(bodyParser.json())
+
+// Handle cross-site request
 app.use(cors())
-app.use(express.static('public'))
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html')
-});
+require("./routes")(app);
 
-
-
-
-
-const listener = app.listen(process.env.PORT || 3000, () => {
-  console.log('Your app is listening on port ' + listener.address().port)
+const server = app.listen(app.get("port"), () => {
+  const { port, address, } = server.address()
+  console.info(`Express server started on ${address}:${port}`)
 })
